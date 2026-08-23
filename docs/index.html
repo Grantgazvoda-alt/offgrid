@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OffGrid — self-hosted batch AI media engine</title>
+<meta name="description" content="Your AI media pipeline, on your infrastructure. No per-clip toll. BYO keys or your own backend — OffGrid owns the queue, the batches, the retries. One flat fee.">
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--line:#30363d;--fg:#e6edf3;--muted:#8b949e;--acc:#3fb950;--blue:#58a6ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  header{display:flex;justify-content:space-between;align-items:center;padding:18px 5vw;border-bottom:1px solid var(--line)}
+  header .logo{font-weight:700;letter-spacing:.4px}
+  header nav a{color:var(--muted);text-decoration:none;margin-left:22px;font-size:14px}
+  header nav a:hover{color:var(--fg)}
+  .hero{padding:72px 5vw 40px;max-width:880px}
+  h1{font-size:38px;line-height:1.2;margin:0 0 14px;letter-spacing:-.5px}
+  h1 span{color:var(--acc)}
+  .sub{color:var(--muted);font-size:18px;margin:0 0 28px}
+  .ctas a{display:inline-block;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;margin-right:10px;font-size:15px}
+  .cta-primary{background:var(--acc);color:#0b1c10}
+  .cta-ghost{border:1px solid var(--line);color:var(--fg)}
+  .cta-ghost:hover{border-color:var(--muted)}
+  section{padding:56px 5vw;max-width:880px;margin:0 auto}
+  h2{font-size:24px;margin:0 0 10px}
+  .lead{color:var(--muted);margin:0 0 28px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:760px){.grid3{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
+  .card h3{margin:0 0 8px;font-size:16px}
+  .card p{margin:0;color:var(--muted);font-size:14px}
+  code{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:2px 7px;font-size:13px;font-family:ui-monospace,Menlo,monospace}
+  .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:760px){.tiers{grid-template-columns:1fr}}
+  .tier{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px 20px}
+  .tier.featured{border-color:var(--acc)}
+  .tier h3{margin:0;font-size:15px}
+  .tier .price{font-size:30px;font-weight:700;margin:10px 0 4px}
+  .tier .per{color:var(--muted);font-size:13px}
+  .tier ul{margin:16px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+  .tier li{margin:6px 0}
+  .roi{max-width:1000px}
+  .roi iframe{width:100%;height:820px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+  .trust{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px}
+  .trust h3{margin-top:0}
+  footer{border-top:1px solid var(--line);padding:26px 5vw;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">OffGrid</div>
+  <nav>
+    <a href="#problem">Why</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#roi">Savings</a>
+    <a href="https://github.com/Grantgazvoda-alt/offgrid">Source</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <h1>Your AI media pipeline.<br>On your infrastructure. <span>No per-clip toll.</span></h1>
+  <p class="sub">Bring your own keys or your own backend — OffGrid owns the queue, the batches, the retries. One flat orchestrator fee, a web dashboard, and <code>docker compose up</code>.</p>
+  <div class="ctas">
+    <a class="cta-primary" href="https://github.com/Grantgazvoda-alt/offgrid">Get the code</a>
+    <a class="cta-ghost" href="#roi">Calculate your savings</a>
+  </div>
+</section>
+
+<section id="problem">
+  <h2>The problem</h2>
+  <p class="lead">You paint in batches. A 500-clip project, a client deliverable, a content calendar. And every single clip is a line item — per-second billing, credits that expire, a bill that grows with your ambition and never shrinks. Worst of all: you're married to one platform's terms and one platform's prices.</p>
+</section>
+
+<section>
+  <h2>The escape</h2>
+  <p class="lead">Keep the models and keys you already have. Point OffGrid at your own keys or your own backend, drop in your batch JSON, and let it drain — prioritized, retried, resumable, on your box. <b>One flat price you'll actually want to grow into: the more you make, the better the math gets.</b></p>
+  <div class="grid3">
+    <div class="card"><h3>Queue</h3><p>Prioritized, persisted, resumable. Restart, and it picks up where it left off.</p></div>
+    <div class="card"><h3>Batch</h3><p>Drop in a JSON batch of hundreds of jobs; watch the dashboard drain it.</p></div>
+    <div class="card"><h3>Retry</h3><p>Exponential backoff and per-job budgets, so no runaway batch surprises.</p></div>
+  </div>
+</section>
+
+<section class="tier-section" id="pricing">
+  <h2>Pricing</h2>
+  <p class="lead">The only price that never moves with volume is the one you choose.</p>
+  <div class="tiers">
+    <div class="tier">
+      <h3>Community</h3>
+      <div class="price">$0</div><div class="per">forever · open source</div>
+      <ul><li>3 concurrent jobs</li><li>500 queued</li><li>All providers</li><li>Dashboard + API</li></ul>
+    </div>
+    <div class="tier featured">
+      <h3>Pro</h3>
+      <div class="price">$39<span class="per">/mo</span></div><div class="per">$32/mo billed yearly</div>
+      <ul><li>12 concurrent jobs</li><li>Unlimited queue</li><li>Priority lane</li><li>Tuning + backups</li></ul>
+    </div>
+    <div class="tier">
+      <h3>Studio</h3>
+      <div class="price">$149/mo</div><div class="per">$124/mo billed yearly</div>
+      <ul><li>5 nodes / 48 concurrent</li><li>5 team seats</li><li>Per-team API keys</li><li>Priority support</li></ul>
+    </div>
+  </div>
+</section>
+
+<section class="roi" id="roi">
+  <h2>What would you save?</h2>
+  <p class="lead">Your volume, your current per-clip cost, your infra. Honest math — including the break-even point where it doesn't pay off yet.</p>
+  <iframe src="roi.html" title="OffGrid ROI calculator"></iframe>
+</section>
+
+<section>
+  <div class="trust">
+    <h2>Built for the people who actually hit the limit</h2>
+    <p>A 430-shot film taught us that the per-clip bill is the real enemy of making at volume. This is the tool we built to stop ourselves going broke. We open-sourced the core so you never have to trust us either.</p>
+    <p>Clarified on purpose: OffGrid is <b>not</b> a model, not a GPU cloud, not "unlimited everything." It's an orchestrator, and that's the entire point.</p>
+  </div>
+</section>
+
+<footer>
+  <span>OffGrid · self-hosted batch AI engine · <a href="https://github.com/Grantgazvoda-alt/offgrid">github.com/Grantgazvoda-alt/offgrid</a></span>
+  <span>Your queue, your keys, your output — on your infra.</span>
+</footer>
+</body>
+</html>

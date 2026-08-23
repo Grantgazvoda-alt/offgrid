@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OffGrid — ROI Calculator</title>
+<!--
+  OffGrid interactive ROI calculator.
+  Self-contained (no CDN, no build). Embed on the landing page either by pasting
+  this whole file's markup into the page, or as <iframe src="offgrid_roi.html">.
+  Math per the GTM plan:
+    hosted_total  = volume * per_clip
+    direct_total  = volume * direct_per_clip      (driven by infra setup)
+    offgrid_total = tier_fee + direct_total       (Pro $39 / Studio $149)
+    savings       = hosted_total - offgrid_total
+    break_even    = tier_fee / max(per_clip - direct_per_clip, eps)   clips/mo
+  Low/unprofitable volume is stated honestly (break-even point), not inflated.
+-->
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e6edf3; --muted:#8b949e;
+    --acc:#3fb950; --blue:#58a6ff; --warn:#d29922; --bad:#f85149;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:28px 20px}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:.3px}
+  .sub{color:var(--muted);margin:0 0 22px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+  h2{font-size:11px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin:0 0 14px}
+  label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px}
+  input,select{width:100%;background:#0d1117;color:var(--fg);border:1px solid var(--line);
+    border-radius:8px;padding:10px 12px;font-size:15px;font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--blue)}
+  .hint{font-size:12px;color:var(--muted);margin-top:5px}
+  .segs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .seg{padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:#0d1117;
+       cursor:pointer;color:var(--muted)}
+  .seg b{display:block;color:var(--fg);font-size:14px}
+  .seg small{font-size:12px}
+  .seg.on{border-color:var(--acc);color:var(--fg);background:#0d1a12}
+  .seg.on b{color:var(--acc)}
+  .results{display:flex;flex-direction:column;gap:12px}
+  .stat{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:10px}
+  .stat .k{color:var(--muted);font-size:14px}
+  .stat .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat.hero .v{font-size:30px;color:var(--acc)}
+  .savepct{color:var(--acc);font-size:15px;font-weight:700}
+  .negative .v{color:var(--bad)}
+  .note{border-top:1px solid var(--line);margin-top:6px;padding-top:12px;font-size:13px;color:var(--muted)}
+  .note b{color:var(--blue)}
+  .promos{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .promo{border:1px dashed var(--line);background:var(--panel);border-radius:8px;padding:6px 10px;
+         font-size:12px;color:var(--muted);cursor:pointer}
+  .promo:hover{border-color:var(--acc);color:var(--fg)}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>What does owning your pipeline cost?</h1>
+  <p class="sub">See what you'd save moving off per-clip billing to OffGrid's flat orchestrator fee + your own direct model cost.</p>
+
+  <div class="grid">
+    <!-- INPUTS -->
+    <div class="panel">
+      <h2>Your situation</h2>
+
+      <label>You're a…</label>
+      <div class="segs" id="role">
+        <div class="seg on" data-role="pro"><b>Solo creator</b><small>Pro · $39/mo</small></div>
+        <div class="seg" data-role="studio"><b>Agency / team</b><small>Studio · $149/mo</small></div>
+      </div>
+
+      <label for="volume">Monthly clip volume</label>
+      <input id="volume" type="number" min="0" step="1" value="500">
+      <div class="hint">How many finished clips/frames you generate per month.</div>
+
+      <label for="hosted">Current per-clip cost (hosted, $)</label>
+      <input id="hosted" type="number" min="0" step="0.01" value="1.20">
+      <div class="hint">Average per-second/per-clip price you pay now. Include everything a platform adds.</div>
+
+      <label for="infra">Infra setup <span class="muted">(sets your direct per-clip cost)</span></label>
+      <select id="infra">
+        <option value="0.30" selected>Cloud API key (bring your own) · ≈ $0.30/clip</option>
+        <option value="0.10">Own backend / GPU stack · ≈ $0.10/clip</option>
+        <option value="0.20">Mixed / custom · ≈ $0.20/clip</option>
+      </select>
+
+      <label for="direct">Direct per-clip cost, refine ($)</label>
+      <input id="direct" type="number" min="0" step="0.01" value="0.30">
+      <div class="hint">Your actual model/infra cost per clip — tune me. The more you self-host, the lower this gets.</div>
+
+      <div class="promos">
+        <span class="promo" onclick="apply(500,1.20,'pro',0.30)">500 · $1.20 (film)</span>
+        <span class="promo" onclick="apply(2000,0.80,'studio',0.25)">2,000 · $0.80 (agency)</span>
+        <span class="promo" onclick="apply(10000,0.50,'studio',0.15)">10,000 · $0.50 (studio)</span>
+        <span class="promo" onclick="apply(50,1.20,'pro',0.30)">50 · $1.20 (light)</span>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="panel">
+      <h2>Your savings</h2>
+      <div class="results" id="results">
+        <div class="stat"><span class="k">Hosted today</span><span class="v" id="rHosted">—</span></div>
+        <div class="stat"><span class="k">OffGrid total (fee + direct)</span><span class="v" id="rOffgrid">—</span></div>
+        <div class="stat delta"><span class="k">Direct model cost</span><span class="v" id="rDirect">—</span></div>
+        <div class="stat hero" id="savRow"><span class="k">You save / month</span><span class="v" id="rSavings">—</span></div>
+        <div class="stat"><span class="k">Yearly</span><span class="v" id="rYearly">—</span></div>
+        <div class="stat"><span class="k">Saved vs hosted</span><span class="v savepct" id="rPct">—</span></div>
+      </div>
+      <div class="note" id="note"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var FEES = { pro: 39, studio: 149 };
+  var role = "pro";
+
+  function $$(s){ return document.querySelector(s); }
+
+  function fmtMoney(n){
+    var neg = n < 0, a = Math.abs(n);
+    var s = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",
+          maximumFractionDigits: a < 1000 ? 2 : 0}).format(a);
+    return (neg ? "−" : "") + s;
+  }
+  function fmtInt(n){ return new Intl.NumberFormat("en-US").format(Math.round(n)); }
+
+  function bindSegs(){
+    document.querySelectorAll("#role .seg").forEach(function(seg){
+      seg.addEventListener("click", function(){
+        document.querySelectorAll("#role .seg").forEach(function(s){ s.classList.remove("on"); });
+        seg.classList.add("on");
+        role = seg.getAttribute("data-role");
+        recompute();
+      });
+    });
+  }
+
+  // infra select writes its value into the refine input
+  $$("#infra").addEventListener("input", function(){
+    $$("#direct").value = this.value;
+    recompute();
+  });
+  ["volume","hosted","direct"].forEach(function(id){
+    $$("#"+id).addEventListener("input", recompute);
+  });
+
+  function apply(v, perClip, r, direct){
+    $$("#volume").value = v;
+    $$("#hosted").value = perClip;
+    $$("#direct").value = direct;
+    $$("#infra").value = direct;
+    if(r !== role){
+      document.querySelectorAll("#role .seg").forEach(function(s){ s.classList.remove("on"); });
+      document.querySelector('#role .seg[data-role="'+r+'"]').classList.add("on");
+      role = r;
+    }
+    recompute();
+  }
+
+  function recompute(){
+    var volume = clamp($$("#volume").value, 0, 1e9);
+    var perClip = clamp($$("#hosted").value, 0, 1000);
+    var direct = clamp($$("#direct").value, 0, 1000);
+    var fee = FEES[role];
+
+    var hosted = volume * perClip;
+    var directTotal = volume * direct;
+    var offgrid = fee + directTotal;
+    var savings = hosted - offgrid;
+    var pct = hosted > 0 ? (savings / hosted) * 100 : 0;
+    var breakEven = (perClip - direct) > 0 ? fee / (perClip - direct) : Infinity;
+
+    $$("#rHosted").textContent = fmtMoney(hosted);
+    $$("#rOffgrid").textContent = fmtMoney(offgrid);
+    $$("#rDirect").textContent = fmtMoney(directTotal);
+    $$("#rSavings").textContent = fmtMoney(savings);
+    $$("#rYearly").textContent = fmtMoney(savings * 12);
+    $$("#rPct").textContent = (hosted > 0 ? pct : 0).toFixed(0) + "%";
+
+    var row = $$("#savRow");
+    row.classList.toggle("negative", savings < 0);
+
+    var note = $$("#note");
+    var tier = role === "pro" ? "Pro ($39/mo)" : "Studio ($149/mo)";
+    if (savings > 0) {
+      note.innerHTML = "With <b>" + tier + "</b> you'd recover the entire orchestrator fee " +
+        "and then some. Your direct model cost of " + fmtMoney(direct) +
+        "/clip means the fee pays for itself early in the month, and the rest is yours.";
+    } else if (volume === 0) {
+      note.textContent = "Enter your volume to see the math.";
+    } else if (savings === 0) {
+      note.innerHTML = "At this volume you break even against <b>" + tier + "</b>. Grow past this and the savings kick in.";
+    } else {
+      note.innerHTML = "Honest take: at <b>" + fmtInt(volume) + " clips/mo</b> the flat " + tier +
+        " fee isn't worth it yet \u2014 you'd need ~<b>" + (isFinite(breakEven) ? fmtInt(breakEven) : "—") +
+        "</b> clips/mo to break even. The math gets better the more you make; save this for when the batch grows.";
+    }
+  }
+
+  function clamp(v, lo, hi){
+    var n = parseFloat(v);
+    if (isNaN(n)) return 0;
+    return Math.min(hi, Math.max(lo, n));
+  }
+
+  bindSegs();
+  recompute();
+</script>
+</body>
+</html>

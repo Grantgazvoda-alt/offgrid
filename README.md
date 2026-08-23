@@ -45,6 +45,9 @@ POST /api/batch/import/{f}.json?budget=25.0                    (cap a whole impo
 POST /api/admin/backup            Pro+ → snapshot offgrid.db to ./data/backups/
 ```
 
+## Docs
+- Landing: https://Grantgazvoda-alt.github.io/offgrid-site/  · ROI calculator: docs/roi.html · GTM: docs/offgrid_gtm.md
+
 ## Quick start (30 seconds)
 ```bash
 cp .env.example .env        # set OFFGRID_API_TOKEN if this box is reachable
