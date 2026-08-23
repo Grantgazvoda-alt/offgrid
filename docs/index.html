@@ -6,25 +6,44 @@
 <title>OffGrid — self-hosted batch AI media engine</title>
 <meta name="description" content="Your AI media pipeline, on your infrastructure. No per-clip toll. BYO keys or your own backend — OffGrid owns the queue, the batches, the retries. One flat fee.">
 <!--
-  Analytics: paste your measurement ID (GA4 "G-XXXXXXX", or any provider the
-  snippet below supports) into ANALYTICS_ID below and the tag loads. Empty =
-  analytics disabled (no third-party requests at all). This is a config point,
-  not a fake feature.
+  ANALYTICS: all off by default — zero third-party requests until you set a
+  provider. Choices:
+    ANALYTICS_PROVIDER="ga4"      → set GA4_ID="G-XXXXXXX"
+    ANALYTICS_PROVIDER="plausible" → set PLAUSIBLE_DOMAIN to the domain you
+        registered in Plausible (optional PLAUSIBLE_SRC for self-hosted)
+  Legacy: a previously pasted `ANALYTICS_ID` auto-selects "ga4".
 -->
 <script>
-  var ANALYTICS_ID = ""; // e.g. "G-ABC123XYZ" — leave "" to keep analytics off
-  if (ANALYTICS_ID) {
-    (function(){
-      var s = document.createElement("script");
-      s.async = true;
-      s.src = "https://www.googletagmanager.com/gtag/js?id=" + ANALYTICS_ID;
+  var ANALYTICS_PROVIDER = "";            // "" | "ga4" | "plausible"
+  var GA4_ID = "";                         // e.g. "G-ABC123XYZ"
+  var PLAUSIBLE_DOMAIN = "";               // domain registered in Plausible
+  var PLAUSIBLE_SRC = "https://plausible.io/js/script.js"; // self-hosted URL ok
+  try { if (typeof ANALYTICS_ID === "string" && ANALYTICS_ID && !ANALYTICS_PROVIDER) {
+      ANALYTICS_PROVIDER = "ga4"; GA4_ID = ANALYTICS_ID; } } catch(e){}
+
+  (function(){
+    if (ANALYTICS_PROVIDER === "ga4" && GA4_ID) {
+      var s = document.createElement("script"); s.async = true;
+      s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA4_ID;
       document.head.appendChild(s);
       window.dataLayer = window.dataLayer || [];
       window.gtag = function(){ dataLayer.push(arguments); };
-      window.gtag("js", new Date());
-      window.gtag("config", ANALYTICS_ID);
-    })();
-  }
+      window.gtag("js", new Date()); window.gtag("config", GA4_ID);
+    } else if (ANALYTICS_PROVIDER === "plausible" && PLAUSIBLE_DOMAIN) {
+      var s2 = document.createElement("script"); s2.defer = true;
+      s2.setAttribute("data-domain", PLAUSIBLE_DOMAIN); s2.src = PLAUSIBLE_SRC;
+      document.head.appendChild(s2);
+    }
+  })();
+
+  // One tracker for both providers + custom events (waitlist submits, CTA clicks)
+  window.trackEvent = function(name, detail){
+    detail = detail || {};
+    try {
+      if (ANALYTICS_PROVIDER === "ga4" && window.gtag) window.gtag("event", name, detail);
+      else if (ANALYTICS_PROVIDER === "plausible" && window.plausible) window.plausible(name, { props: detail });
+    } catch(e){}
+  };
 </script>
 <style>
   :root{--bg:#0d1117;--panel:#161b22;--line:#30363d;--fg:#e6edf3;--muted:#8b949e;--acc:#3fb950;--green:#2ea043;--blue:#58a6ff}
@@ -69,6 +88,12 @@
   .contact-cards a{text-decoration:none;color:var(--fg)}
   .card:hover{border-color:var(--muted)}
   .card .small{font-size:12px;color:var(--muted);margin-top:6px}
+  /* waitlist counter + progress */
+  .wlmeta{margin-top:14px}
+  .wl-line{font-size:14px;color:var(--fg)}
+  .wl-line b{color:var(--acc)}
+  .wlbar{background:#21262d;border-radius:6px;height:8px;margin-top:8px;overflow:hidden;max-width:340px}
+  .wlbar i{display:block;height:100%;background:var(--acc);width:0%;transition:width .4s}
   footer{border-top:1px solid var(--line);padding:26px 5vw;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
   footer a{color:var(--muted)}
 </style>
@@ -89,7 +114,8 @@
   <h1>Your AI media pipeline.<br>On your infrastructure. <span>No per-clip toll.</span></h1>
   <p class="sub">Bring your own keys or your own backend — OffGrid owns the queue, the batches, the retries. One flat orchestrator fee, a web dashboard, and <code>docker compose up</code>.</p>
   <div class="ctas">
-    <a class="cta-ghost" href="#roi">Calculate your savings</a>
+    <a class="cta-primary" href="#roi" onclick="try{trackEvent('cta_click',{which:'hero_roi'})}catch(e){}">Calculate your savings</a>
+    <a class="cta-ghost" href="#waitlist" onclick="try{trackEvent('cta_click',{which:'hero_waitlist'})}catch(e){}">Join the waitlist</a>
   </div>
 </section>
 
@@ -104,7 +130,7 @@
   <div class="grid3">
     <div class="card"><h3>Queue</h3><p>Prioritized, persisted, resumable. Restart, and it picks up where it left off.</p></div>
     <div class="card"><h3>Batch</h3><p>Drop in a JSON batch of hundreds of jobs; watch the dashboard drain it.</p></div>
-    <div class="card"><h3>Retry</h3><p>Exponential backoff and per-batch budgets, so no runaway run surprises you.</p></div>
+    <div class="card"><h3>Retry + budgets</h3><p>Exponential backoff and per-batch USD caps, so no runaway run surprises you.</p></div>
   </div>
 </section>
 
@@ -139,8 +165,13 @@
 <section id="waitlist">
   <div class="trust">
     <h2>Get early access</h2>
-    <p>The calculator above has the sign-up built in — run your numbers, hit <b>Join the waitlist</b>, and your prefilled sign-up lands straight in our inbox (no third-party forms, unsubscribable anytime).</p>
+    <p>Run your numbers in the calculator above, hit <b>Join the waitlist</b>, and your sign-up (with your exact savings) lands in our inbox — no third-party forms, unsubscribable anytime.</p>
     <p>First 100 join at <b>$29/mo for the first 3 months of Pro</b>.</p>
+    <!-- Waitlist counter: reads waitlist.json (edit that file as signups land) -->
+    <div class="wlmeta">
+      <div class="wl-line"><b id="wlCount">0</b> on the waitlist<span id="wlLeft"></span></div>
+      <div class="wlbar"><i id="wlBar"></i></div>
+    </div>
     <div class="ctas" style="margin-top:16px">
       <a class="cta-primary" href="#roi">Run the numbers → join</a>
     </div>
@@ -162,7 +193,7 @@
     </a>
     <a class="card" href="#roi">
       <h3>Run your numbers</h3>
-      <p>The calculator wires straight into the waitlist below it.</p>
+      <p>The calculator wires straight into the waitlist.</p>
       <div class="small">2 minutes · no signup</div>
     </a>
   </div>
@@ -171,7 +202,7 @@
 <section>
   <div class="trust">
     <h2>Built for the people who actually hit the limit</h2>
-    <p>A 430-shot film taught us that the per-clip bill is the real enemy of making at volume. This is the tool we built to stop ourselves going broke. We open-sourced the core so you never have to trust us either.</p>
+    <p>A film shot in ~430 AI-generated clips taught us that the per-clip bill is the real enemy of making at volume. This is the tool we built to stop ourselves going broke. We open-sourced the core so you never have to trust us either.</p>
     <p>Clarified on purpose: OffGrid is <b>not</b> a model, not a GPU cloud, not "unlimited everything." It's an orchestrator, and that's the entire point.</p>
   </div>
 </section>
@@ -180,5 +211,22 @@
   <span>OffGrid · self-hosted batch AI engine · <a href="mailto:GrantGazvoda@icloud.com">contact</a> · <a href="https://github.com/Grantgazvoda-alt/offgrid-site/issues/new">feedback</a></span>
   <span>Your queue, your keys, your output — on your infra.</span>
 </footer>
+
+<script>
+  // --- waitlist counter (source of truth: waitlist.json) --------------------
+  // Edit waitlist.json as signups land (from your Formspree inbox / mailto).
+  var WL_DEFAULT = { count: 0, goal: 100 };
+  function renderWl(c, g){
+    var el = document.getElementById("wlCount"), left = document.getElementById("wlLeft"),
+        bar = document.getElementById("wlBar");
+    if (el) el.textContent = c;
+    if (left) left.textContent = c >= g ? " — launch price locked ✔" : " · " + (g - c) + " spots left at $29/mo";
+    if (bar) bar.style.width = Math.min(100, (g > 0 ? c / g * 100 : 0)) + "%";
+  }
+  fetch("waitlist.json?t=" + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(d){ renderWl(d.count || 0, d.goal || 100); })
+    .catch(function(){ renderWl(WL_DEFAULT.count, WL_DEFAULT.goal); });
+</script>
 </body>
 </html>
