@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OffGrid — queue</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e6edf3;
+          --muted:#8b949e; --acc:#3fb950; --warn:#d29922; --bad:#f85149; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 -apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg); }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; gap:18px; align-items:baseline; }
+  header h1 { font-size:16px; margin:0; letter-spacing:.4px; }
+  header span { color:var(--muted); }
+  .wrap { padding:20px; max-width:1200px; margin:0 auto; display:grid; gap:20px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin:0 0 10px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+  .queued { background:#1f3864; color:#79b8ff; }
+  .running { background:#3d2f00; color:var(--warn); }
+  .done { background:#0d3a21; color:var(--acc); }
+  .failed { background:#4b1518; color:var(--bad); }
+  .cancelled { background:#24292f; color:var(--muted); }
+  .bar { background:#21262d; border-radius:4px; height:6px; width:80px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--acc); }
+  button { background:#21262d; color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:4px 10px; cursor:pointer; font-size:12px; }
+  button:hover { border-color:#8b949e; }
+  textarea,select,input { background:#0d1117; color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-family:ui-monospace,Menlo,monospace; font-size:12px; width:100%; }
+  .row { display:flex; gap:8px; align-items:center; margin-top:8px; }
+  .row select { width:200px; }
+  .err { color:var(--bad); font-size:12px; }
+  .muted { color:var(--muted); }
+  .mono { font-family:ui-monospace,Menlo,monospace; font-size:11px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>OffGrid</h1>
+  <span id="health" class="muted">connecting…</span>
+  <span id="tier" class="muted"></span>
+  <span id="stats" class="muted"></span>
+</header>
+<div class="wrap">
+
+  <div class="panel">
+    <h2>Submit job</h2>
+    <div class="row">
+      <select id="provider"></select>
+      <input id="priority" type="number" value="0" min="0" style="width:80px" title="priority (higher first)">
+      <span class="hint" id="prio_hint"></span>
+      <input id="max_attempts" type="number" value="3" style="width:80px" title="max attempts">
+    </div>
+    <textarea id="payload" rows="3" spellcheck="false">{"prompt":"a sample job — replace with your payload"}</textarea>
+    <div class="row">
+      <button onclick="submitJob()">Enqueue</button>
+      <span id="submit_msg" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Batch import <span class="muted mono" id="batchdir"></span></h2>
+    <div class="row">
+      <select id="batchfile"></select>
+      <input id="batchbudget" type="number" min="0" step="0.50" value="0" style="width:120px" title="Batch budget (USD) · 0 = no cap">
+      <button onclick="importBatch()">Import</button>
+      <button onclick="setBudget()">Set budget</button>
+    </div>
+    <div class="hint" id="budget_state"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Queue</h2>
+    <table>
+      <thead><tr>
+        <th>id</th><th>provider</th><th>batch</th><th>status</th><th>progress</th>
+        <th>attempts</th><th>error / note</th><th></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="muted" style="margin-top:8px;font-size:12px">Filters:
+      <button onclick="load('')">all</button>
+      <button onclick="load('queued')">queued</button>
+      <button onclick="load('running')">running</button>
+      <button onclick="load('done')">done</button>
+      <button onclick="load('failed')">failed</button>
+    </div>
+  </div>
+
+</div>
+<script>
+const state = { filter:"" };
+async function j(path, opts){
+  const r = await fetch(path, opts);
+  if(!r.ok){ const e = await r.json().catch(()=>({detail:r.status})); throw new Error(e.detail||r.status); }
+  return r.json();
+}
+const pill = s => `<span class="pill ${s}">${s}</span>`;
+async function load(filter){
+  state.filter = filter;
+  const q = filter ? "?status="+filter : "";
+  const d = await j("/api/jobs"+q);
+  const rows = d.jobs.map(x=>`<tr>
+    <td class="mono">${x.id}</td>
+    <td>${x.provider}</td>
+    <td>${x.batch}</td>
+    <td>${pill(x.status)}</td>
+    <td><div class="bar"><i style="width:${x.progress||0}%"></i></div>
+        <span class="muted" style="font-size:11px">${x.progress||0}% ${x.progress_note||""}</span></td>
+    <td>${x.attempts||0}/${x.max_attempts}</td>
+    <td class="mono" style="max-width:280px;overflow:hidden;text-overflow:ellipsis">${x.error||""}</td>
+    <td style="white-space:nowrap">
+      ${x.status==="failed"||x.status==="cancelled" ? `<button onclick='retry("${x.id}")'>retry</button> ` : ""}
+      ${x.status!=="done" ? `<button onclick='cancel("${x.id}")'>stop</button> ` : ""}
+      <button onclick='del("${x.id}")'>del</button>
+    </td></tr>`).join("");
+  document.getElementById("rows").innerHTML = rows || `<tr><td colspan="8" class="muted">empty</td></tr>`;
+}
+async function refreshMeta(){
+  const h = await j("/api/health").catch(()=>null);
+  document.getElementById("health").textContent = h ? `${h.product} v${h.version}` : "offline";
+  const e = await j("/api/entitlement").catch(()=>({label:"?"}));
+  document.getElementById("tier").textContent = e.label +
+    (e.expires ? " · until " + new Date(e.expires*1000).toISOString().slice(0,10) : "");
+  const prio = document.getElementById("priority");
+  if(e.priority_lane === false){
+    prio.disabled = true; prio.value = 0;
+    document.getElementById("prio_hint").textContent = "priority = Pro+";
+  } else {
+    prio.disabled = false;
+    document.getElementById("prio_hint").textContent = "";
+  }
+  const p = await j("/api/batches");
+  document.getElementById("batchdir").textContent = "/ " + p.dir;
+  const sel = document.getElementById("batchfile");
+  sel.innerHTML = p.batches.map(b=>`<option>${b}.json</option>`).join("");
+  const s = await j("/api/stats");
+  const b = s.by_status||{};
+  document.getElementById("stats").textContent =
+    `queued ${b.queued||0}${e.queued_limit? "/"+e.queued_limit:""} · running ${b.running||0} · done ${b.done||0} · failed ${b.failed||0} · est spend $${(s.spend_est||0).toFixed(2)}`;
+  refreshBudgetState();
+}
+async function refreshProviders(){
+  const p = await j("/api/providers");
+  document.getElementById("provider").innerHTML =
+    p.providers.map(x=>`<option value="${x.name}">${x.label}</option>`).join("");
+}
+async function submitJob(){
+  const msg = document.getElementById("submit_msg");
+  try{
+    let payload; try{ payload = JSON.parse(document.getElementById("payload").value); }
+    catch(e){ throw new Error("payload is not valid JSON"); }
+    const body = { provider: document.getElementById("provider").value, payload,
+      priority:+document.getElementById("priority").value,
+      max_attempts:+document.getElementById("max_attempts").value };
+    const r = await j("/api/jobs", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+    msg.textContent = "enqueued "+r.id;
+    load(state.filter);
+  }catch(e){ msg.innerHTML = `<span class="err">${e.message}</span>`; }
+}
+async function importBatch(){
+  const f = document.getElementById("batchfile").value;
+  const budget = parseFloat(document.getElementById("batchbudget").value)||0;
+  const msg = document.getElementById("budget_state");
+  msg.textContent = "…";
+  try{ const q = budget>0 ? "?budget="+budget : "";
+       const r = await j("/api/batch/import/"+encodeURIComponent(f)+q, {method:"POST"});
+       msg.textContent = `imported ${r.count} → ${r.ids.join(", ")}`; load(""); }
+  catch(e){ msg.innerHTML = `<span class="err">${e.message}</span>`; }
+  refreshBudgetState();
+}
+async function setBudget(){
+  const f = document.getElementById("batchfile").value.replace(/\.json$/,"");
+  const budget = parseFloat(document.getElementById("batchbudget").value)||0;
+  try{
+    await j(`/api/batches/${encodeURIComponent(f)}/budget`, {method:"POST",
+      headers:{"Content-Type":"application/json"}, body:JSON.stringify({budget_usd: budget})});
+    refreshBudgetState();
+  }catch(e){ document.getElementById("budget_state").innerHTML = `<span class="err">${e.message}</span>`; }
+}
+async function refreshBudgetState(){
+  const el = document.getElementById("budget_state");
+  const f = document.getElementById("batchfile").value;
+  if(!f){ el.textContent=""; return; }
+  try{
+    const r = await j(`/api/batches/${encodeURIComponent(f.replace(/\.json$/,""))}/budget`);
+    if(r.budget_usd){
+      el.textContent = `budget $${r.budget_usd.toFixed(2)} · committed ~$${(r.spent_est||0).toFixed(2)} · remaining $${(r.remaining||0).toFixed(2)}${r.capped?" · CAP REACHED":""}`;
+    } else el.textContent = "no budget cap on this batch";
+  }catch(e){ el.textContent=""; }
+}
+const retry = id => j(`/api/jobs/${id}/retry`,{method:"POST"}).then(()=>load(""));
+const cancel = id => j(`/api/jobs/${id}/cancel`,{method:"POST"}).then(()=>load(""));
+const del = id => j(`/api/jobs/${id}`,{method:"DELETE"}).then(()=>load(""));
+(async function(){
+  await refreshProviders(); await refreshMeta(); await load("");
+  document.getElementById("batchfile").addEventListener("change", refreshBudgetState);
+  setInterval(()=>{ refreshMeta().catch(()=>{}); },2000);
+  setInterval(()=>{ load(state.filter).catch(()=>{}); },2000);
+})();
+</script>
+</body>
+</html>

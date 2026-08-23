@@ -1,0 +1,16 @@
+# local data + runtime state (never commit)
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# secrets / env
+.env
+*.pem
+
+# python
+__pycache__/
+*.pyc
+
+# misc
+.DS_Store

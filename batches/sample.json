@@ -1,0 +1,22 @@
+{
+  "jobs": [
+    {
+      "provider": "mock",
+      "priority": 2,
+      "max_attempts": 2,
+      "payload": { "prompt": "sample job A", "steps": 2 }
+    },
+    {
+      "provider": "mock",
+      "priority": 0,
+      "max_attempts": 2,
+      "payload": { "prompt": "sample job B", "steps": 1 }
+    },
+    {
+      "provider": "mock",
+      "priority": 5,
+      "max_attempts": 1,
+      "payload": { "prompt": "sample job C — highest priority, wins the queue" }
+    }
+  ]
+}

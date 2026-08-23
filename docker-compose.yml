@@ -1,0 +1,29 @@
+# OffGrid — bring it up on your own infra:
+#   docker compose up -d
+#   open http://localhost:8000
+#
+# Point at your own backend (generic_http) or set an API key below to leave
+# hosted platforms. Persisted queue lives in ./data/offgrid.db.
+services:
+  offgrid:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Set to protect the API/dashboard (else unauthenticated — self-hosted).
+      - OFFGRID_API_TOKEN=${OFFGRID_API_TOKEN:-}
+      # Licensing: generate keys with `python license.py gen <tier> <expiry>`.
+      # No key -> Community tier (3 concurrent, 500 queued).
+      - OFFGRID_LICENSE_KEY=${OFFGRID_LICENSE_KEY:-}
+      - OFFGRID_LICENSE_SECRET=${OFFGRID_LICENSE_SECRET:-}
+      # BYO backend: URL + optional key for the generic_http provider, and the
+      # default per-job cost estimate used for budget guardrails.
+      - OFFGRID_GENERIC_URL=${OFFGRID_GENERIC_URL:-}
+      - OFFGRID_GENERIC_API_KEY=${OFFGRID_GENERIC_API_KEY:-}
+      - OFFGRID_COST_PER_JOB=${OFFGRID_COST_PER_JOB:-0.30}
+      # Your own keys for first-party providers.
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - ./data:/app/data
+      - ./batches:/app/batches
+    restart: unless-stopped
