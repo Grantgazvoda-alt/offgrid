@@ -5,11 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OffGrid — self-hosted batch AI media engine</title>
 <meta name="description" content="Your AI media pipeline, on your infrastructure. No per-clip toll. BYO keys or your own backend — OffGrid owns the queue, the batches, the retries. One flat fee.">
+<!--
+  Analytics: paste your measurement ID (GA4 "G-XXXXXXX", or any provider the
+  snippet below supports) into ANALYTICS_ID below and the tag loads. Empty =
+  analytics disabled (no third-party requests at all). This is a config point,
+  not a fake feature.
+-->
+<script>
+  var ANALYTICS_ID = ""; // e.g. "G-ABC123XYZ" — leave "" to keep analytics off
+  if (ANALYTICS_ID) {
+    (function(){
+      var s = document.createElement("script");
+      s.async = true;
+      s.src = "https://www.googletagmanager.com/gtag/js?id=" + ANALYTICS_ID;
+      document.head.appendChild(s);
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function(){ dataLayer.push(arguments); };
+      window.gtag("js", new Date());
+      window.gtag("config", ANALYTICS_ID);
+    })();
+  }
+</script>
 <style>
-  :root{--bg:#0d1117;--panel:#161b22;--line:#30363d;--fg:#e6edf3;--muted:#8b949e;--acc:#3fb950;--blue:#58a6ff}
+  :root{--bg:#0d1117;--panel:#161b22;--line:#30363d;--fg:#e6edf3;--muted:#8b949e;--acc:#3fb950;--green:#2ea043;--blue:#58a6ff}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-  header{display:flex;justify-content:space-between;align-items:center;padding:18px 5vw;border-bottom:1px solid var(--line)}
+  header{position:sticky;top:0;background:rgba(13,17,23,.92);backdrop-filter:blur(8px);display:flex;justify-content:space-between;align-items:center;padding:16px 5vw;border-bottom:1px solid var(--line);z-index:10}
   header .logo{font-weight:700;letter-spacing:.4px}
   header nav a{color:var(--muted);text-decoration:none;margin-left:22px;font-size:14px}
   header nav a:hover{color:var(--fg)}
@@ -19,6 +40,7 @@
   .sub{color:var(--muted);font-size:18px;margin:0 0 28px}
   .ctas a{display:inline-block;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;margin-right:10px;font-size:15px}
   .cta-primary{background:var(--acc);color:#0b1c10}
+  .cta-primary:hover{background:var(--green)}
   .cta-ghost{border:1px solid var(--line);color:var(--fg)}
   .cta-ghost:hover{border-color:var(--muted)}
   section{padding:56px 5vw;max-width:880px;margin:0 auto}
@@ -40,9 +62,13 @@
   .tier ul{margin:16px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
   .tier li{margin:6px 0}
   .roi{max-width:1000px}
-  .roi iframe{width:100%;height:820px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+  .roi iframe{width:100%;height:900px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
   .trust{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px}
   .trust h3{margin-top:0}
+  .contact-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .contact-cards a{text-decoration:none;color:var(--fg)}
+  .card:hover{border-color:var(--muted)}
+  .card .small{font-size:12px;color:var(--muted);margin-top:6px}
   footer{border-top:1px solid var(--line);padding:26px 5vw;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
   footer a{color:var(--muted)}
 </style>
@@ -54,7 +80,8 @@
     <a href="#problem">Why</a>
     <a href="#pricing">Pricing</a>
     <a href="#roi">Savings</a>
-    <a href="https://github.com/Grantgazvoda-alt/offgrid">Source</a>
+    <a href="#contact">Contact</a>
+    <a href="#waitlist">Waitlist</a>
   </nav>
 </header>
 
@@ -62,7 +89,6 @@
   <h1>Your AI media pipeline.<br>On your infrastructure. <span>No per-clip toll.</span></h1>
   <p class="sub">Bring your own keys or your own backend — OffGrid owns the queue, the batches, the retries. One flat orchestrator fee, a web dashboard, and <code>docker compose up</code>.</p>
   <div class="ctas">
-    <a class="cta-primary" href="https://github.com/Grantgazvoda-alt/offgrid">Get the code</a>
     <a class="cta-ghost" href="#roi">Calculate your savings</a>
   </div>
 </section>
@@ -78,7 +104,7 @@
   <div class="grid3">
     <div class="card"><h3>Queue</h3><p>Prioritized, persisted, resumable. Restart, and it picks up where it left off.</p></div>
     <div class="card"><h3>Batch</h3><p>Drop in a JSON batch of hundreds of jobs; watch the dashboard drain it.</p></div>
-    <div class="card"><h3>Retry</h3><p>Exponential backoff and per-job budgets, so no runaway batch surprises.</p></div>
+    <div class="card"><h3>Retry</h3><p>Exponential backoff and per-batch budgets, so no runaway run surprises you.</p></div>
   </div>
 </section>
 
@@ -110,6 +136,38 @@
   <iframe src="roi.html" title="OffGrid ROI calculator"></iframe>
 </section>
 
+<section id="waitlist">
+  <div class="trust">
+    <h2>Get early access</h2>
+    <p>The calculator above has the sign-up built in — run your numbers, hit <b>Join the waitlist</b>, and your prefilled sign-up lands straight in our inbox (no third-party forms, unsubscribable anytime).</p>
+    <p>First 100 join at <b>$29/mo for the first 3 months of Pro</b>.</p>
+    <div class="ctas" style="margin-top:16px">
+      <a class="cta-primary" href="#roi">Run the numbers → join</a>
+    </div>
+  </div>
+</section>
+
+<section id="contact">
+  <h2>Contact / feedback</h2>
+  <p class="lead">Questions, feature ideas, "your math is wrong", or a batch-scale story to share — all welcome. Prefer honest over polished.</p>
+  <div class="contact-cards">
+    <a class="card" href="mailto:GrantGazvoda@icloud.com?subject=OffGrid feedback">
+      <h3>Email the founder</h3>
+      <p>Direct line for anything. We answer.</p>
+      <div class="small">GrantGazvoda@icloud.com</div>
+    </a>
+    <a class="card" href="https://github.com/Grantgazvoda-alt/offgrid-site/issues/new" target="_blank" rel="noopener">
+      <h3>Open an issue</h3>
+      <p>Bug, missing feature, or better math — file it on the GitHub site repo.</p>
+    </a>
+    <a class="card" href="#roi">
+      <h3>Run your numbers</h3>
+      <p>The calculator wires straight into the waitlist below it.</p>
+      <div class="small">2 minutes · no signup</div>
+    </a>
+  </div>
+</section>
+
 <section>
   <div class="trust">
     <h2>Built for the people who actually hit the limit</h2>
@@ -119,7 +177,7 @@
 </section>
 
 <footer>
-  <span>OffGrid · self-hosted batch AI engine · <a href="https://github.com/Grantgazvoda-alt/offgrid">github.com/Grantgazvoda-alt/offgrid</a></span>
+  <span>OffGrid · self-hosted batch AI engine · <a href="mailto:GrantGazvoda@icloud.com">contact</a> · <a href="https://github.com/Grantgazvoda-alt/offgrid-site/issues/new">feedback</a></span>
   <span>Your queue, your keys, your output — on your infra.</span>
 </footer>
 </body>

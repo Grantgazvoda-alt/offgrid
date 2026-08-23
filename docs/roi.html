@@ -5,16 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OffGrid — ROI Calculator</title>
 <!--
-  OffGrid interactive ROI calculator.
+  OffGrid interactive ROI calculator (+ waitlist CTA).
   Self-contained (no CDN, no build). Embed on the landing page either by pasting
-  this whole file's markup into the page, or as <iframe src="offgrid_roi.html">.
+  this whole file's markup into the page, or as <iframe src="roi.html">.
   Math per the GTM plan:
     hosted_total  = volume * per_clip
     direct_total  = volume * direct_per_clip      (driven by infra setup)
     offgrid_total = tier_fee + direct_total       (Pro $39 / Studio $149)
     savings       = hosted_total - offgrid_total
     break_even    = tier_fee / max(per_clip - direct_per_clip, eps)   clips/mo
-  Low/unprofitable volume is stated honestly (break-even point), not inflated.
+  WAITLIST: plain-mailto by default (zero-config, works today). Change
+  WAITLIST_EMAIL to any inbox — or replace the mailto jump entirely with a
+  form endpoint (e.g. Formspree) when you have one.
 -->
 <style>
   :root{
@@ -52,11 +54,25 @@
   .negative .v{color:var(--bad)}
   .note{border-top:1px solid var(--line);margin-top:6px;padding-top:12px;font-size:13px;color:var(--muted)}
   .note b{color:var(--blue)}
+  .ctawrap{margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  button{background:#21262d;color:var(--fg);border:1px solid var(--line);border-radius:6px;
+         padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600}
+  button:hover{border-color:#8b949e}
+  button.primary{background:var(--acc);border-color:var(--acc);color:#0b1c10}
+  button.primary:hover{background:#2ea043;border-color:#2ea043}
   .promos{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
   .promo{border:1px dashed var(--line);background:var(--panel);border-radius:8px;padding:6px 10px;
          font-size:12px;color:var(--muted);cursor:pointer}
   .promo:hover{border-color:var(--acc);color:var(--fg)}
   .muted{color:var(--muted)}
+  /* waitlist modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal.show{display:flex}
+  .modal-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:420px;width:100%;padding:24px}
+  .modal-card h3{margin:0 0 6px}
+  .modal-card .muted{font-size:13px;margin:0 0 10px}
+  .modal-card input{margin-bottom:6px}
+  .err{color:var(--bad);font-size:12px}
 </style>
 </head>
 <body>
@@ -114,13 +130,42 @@
         <div class="stat"><span class="k">Saved vs hosted</span><span class="v savepct" id="rPct">—</span></div>
       </div>
       <div class="note" id="note"></div>
+      <div class="ctawrap">
+        <button class="primary" id="wlOpen" onclick="openWaitlist()">Join the waitlist</button>
+        <span class="muted" style="font-size:12px">Early access · first 100 get Pro at $29/mo for 3 months</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- waitlist modal -->
+<div class="modal" id="wlModal">
+  <div class="modal-card">
+    <h3>Get early access</h3>
+    <p class="muted">Nothing leaves your machine: this opens your mail app with a
+      prefilled sign-up (unsubscribable anytime). No account, no third-party form.</p>
+    <label>Name</label>
+    <input id="wlName" type="text" placeholder="Ada Lovelace">
+    <label>Email</label>
+    <input id="wlEmail" type="email" placeholder="you@studio.com">
+    <div class="muted" id="wlMsg"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="primary" onclick="doWaitlist()">Send my sign-up</button>
+      <button onclick="closeWaitlist()">Close</button>
     </div>
   </div>
 </div>
 
 <script>
+  // --- config -------------------------------------------------------------
+  // Waitlist destination: any email works with zero setup (opens the visitor's
+  // mail app prefilled). Swap for a hosted form endpoint later, e.g.
+  //   var WAITLIST_URL = "https://formspree.io/f/yourid";
+  var WAITLIST_EMAIL = "GrantGazvoda@icloud.com";
+
   var FEES = { pro: 39, studio: 149 };
   var role = "pro";
+  var last = { volume:0, perclip:0, direct:0, savings:0, tier:"pro" };
 
   function $$(s){ return document.querySelector(s); }
 
@@ -178,6 +223,9 @@
     var pct = hosted > 0 ? (savings / hosted) * 100 : 0;
     var breakEven = (perClip - direct) > 0 ? fee / (perClip - direct) : Infinity;
 
+    last = { volume: volume, perclip: perClip, direct: direct,
+             savings: savings, tier: role };
+
     $$("#rHosted").textContent = fmtMoney(hosted);
     $$("#rOffgrid").textContent = fmtMoney(offgrid);
     $$("#rDirect").textContent = fmtMoney(directTotal);
@@ -209,6 +257,55 @@
     var n = parseFloat(v);
     if (isNaN(n)) return 0;
     return Math.min(hi, Math.max(lo, n));
+  }
+
+  // --- waitlist -----------------------------------------------------------
+  var WAITLIST_URL = null; // set to a form endpoint to POST instead of mailto
+
+  function openWaitlist(){
+    $$("#wlEmail").value = "";
+    $$("#wlName").value = "";
+    $$("#wlMsg").textContent = "";
+    $$("#wlModal").classList.add("show");
+    setTimeout(function(){ $$("#wlName").focus(); }, 30);
+  }
+  function closeWaitlist(){
+    $$("#wlModal").classList.remove("show");
+  }
+  function enc(s){ return encodeURIComponent(s); }
+
+  function doWaitlist(){
+    var name = ($$("#wlName").value || "").trim();
+    var email = ($$("#wlEmail").value || "").trim();
+    var msg = $$("#wlMsg");
+    if(!name){ msg.textContent = "tell us your name (or a studio name)."; return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.textContent = "enter a valid email."; return; }
+
+    var body =
+      "Join the waitlist (from the ROI calculator)\n\n" +
+      "Name:  " + name + "\n" +
+      "Email: " + email + "\n" +
+      "Tier:  " + (last.tier === "pro" ? "Pro" : "Studio") + "\n" +
+      "Monthly volume: " + fmtInt(last.volume) + " clips\n" +
+      "Current per-clip cost: $" + last.perclip.toFixed(2) + "\n" +
+      "Direct cost: $" + last.direct.toFixed(2) + "\n" +
+      "Est. savings: $" + fmtMoney(last.savings).replace(/[$,]/g,"").replace(/^−/,"-") + "/mo\n";
+
+    if (WAITLIST_URL) {
+      try {
+        fetch(WAITLIST_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "name=" + enc(name) + "&email=" + enc(email) + "&message=" + enc(body)
+        }).then(function(){ msg.textContent = "You're on the list \u2014 we'll email as soon as we launch."; }).catch(function(){
+          msg.textContent = "Form endpoint unreachable \u2014 try again, or grab us at " + WAITLIST_EMAIL;
+        });
+        return;
+      } catch(e){ /* fall through to mailto */ }
+    }
+    var subject = "OffGrid waitlist — " + name + " <" + email + ">";
+    location.href = "mailto:" + WAITLIST_EMAIL + "?subject=" + enc(subject) + "&body=" + enc(body);
+    msg.innerHTML = "Your mail app should open prefilled \u2014 hit <b>send</b> and you're on the list.";
   }
 
   bindSegs();
