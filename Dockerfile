@@ -1,5 +1,5 @@
 # OffGrid — self-hosted batch AI engine. Small, no DB server.
-FROM python:3.12-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 # Install tini for proper PID 1 signal handling
 RUN apt-get update && apt-get install -y --no-install-recommends tini \
