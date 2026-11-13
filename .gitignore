@@ -7,6 +7,8 @@ data/
 # secrets / env
 .env
 *.pem
+.license_secret
+.issued_licenses.jsonl
 
 # python
 __pycache__/
